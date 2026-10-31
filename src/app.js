@@ -6,6 +6,15 @@ import { startCheckout, handleStripeEvent, PRICE_GBP } from './billing.js';
 import { metrics, track } from './db.js';
 import { verifyToken } from './tokens.js';
 import * as views from './views.js';
+import { fileURLToPath } from 'node:url';
+
+const FONT_DIR = fileURLToPath(new URL('../node_modules/@fontsource/', import.meta.url));
+const FONTS = {
+  'shoulders-800.woff2': 'big-shoulders-display/files/big-shoulders-display-latin-800-normal.woff2',
+  'shoulders-700.woff2': 'big-shoulders-display/files/big-shoulders-display-latin-700-normal.woff2',
+  'atkinson-400.woff2': 'atkinson-hyperlegible/files/atkinson-hyperlegible-latin-400-normal.woff2',
+  'atkinson-700.woff2': 'atkinson-hyperlegible/files/atkinson-hyperlegible-latin-700-normal.woff2',
+};
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -38,6 +47,13 @@ export function createApp({ pool, ch, stripe, baseUrl }) {
   }));
 
   app.get('/', (_req, res) => html(res, views.homePage()));
+  app.get('/pricing', (_req, res) => html(res, views.pricingPage()));
+  app.get('/fonts/:file', (req, res) => {
+    const rel = FONTS[req.params.file];
+    if (!rel) return res.status(404).end();
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    res.sendFile(FONT_DIR + rel);
+  });
 
   app.get('/search', wrap(async (req, res) => {
     const q = String(req.query.q || '').trim();
@@ -70,8 +86,8 @@ export function createApp({ pool, ch, stripe, baseUrl }) {
   }));
 
   app.get('/thanks', (req, res) => html(res, req.query.pending
-    ? views.messagePage('You\'re on the list', '<p>Payments are still being set up, so you haven\'t been charged. We\'ll email you as soon as reminders go live.</p>')
-    : views.messagePage('Reminders are on', '<p>Thanks — you\'ll get an email before each deadline. Every email has a link to manage or cancel.</p>')));
+    ? views.messagePage('You are on the list', '<p>Payments open soon, so you have not been charged. We will email you the day reminders start.</p>')
+    : views.messagePage('Reminders started', '<p>Your first email arrives at the next reminder date. Each email has a link to manage or cancel your reminders.</p>')));
 
   app.get('/manage/:token', wrap(async (req, res) => {
     const id = verifyToken(req.params.token);
