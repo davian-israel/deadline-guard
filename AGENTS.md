@@ -19,3 +19,6 @@ Agents operating this business follow these rules. Humans review weekly.
 
 ## Hard limits
 No spending money, no new accounts, no messages to people who did not contact us first.
+
+## Deploys
+Pushes to `main` should deploy automatically. If no new Railway deployment appears within 5 minutes, reconnect the service source (Railway `connect-service-source`, same repo and branch) to trigger it, then confirm `/healthz`.
