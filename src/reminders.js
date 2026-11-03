@@ -29,7 +29,7 @@ export function reminderEmail({ company, filing, bucket, manageUrl }) {
 /** Daily job: refresh each active subscriber's company and send any due reminder once per bucket. */
 export async function runReminders({ pool, ch, baseUrl, now = new Date() }) {
   const { rows: subs } = await pool.query(
-    `SELECT id, email, company_number FROM subscribers WHERE status = 'active' ORDER BY id`,
+    `SELECT id, email, company_number FROM subscribers WHERE status IN ('active','past_due') ORDER BY id`,
   );
   const stats = { checked: 0, sent: 0, errors: 0 };
   for (const sub of subs) {

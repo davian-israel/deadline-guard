@@ -11,7 +11,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node --test",
-    "reminders": "node src/run-reminders.js"
+    "reminders": "node src/run-reminders.js",
+    "stripe:setup": "node scripts/stripe-setup.js"
   },
   "license": "UNLICENSED",
   "private": true,

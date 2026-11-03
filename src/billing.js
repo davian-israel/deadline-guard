@@ -54,13 +54,25 @@ export async function handleStripeEvent(pool, event) {
     if (rowCount) await track(pool, 'paid', String(id));
     return id;
   }
+  if (event.type === 'invoice.payment_failed' && event.data.object.subscription) {
+    const { rowCount } = await pool.query(
+      `UPDATE subscribers SET status = 'past_due' WHERE stripe_subscription = $1 AND status = 'active'`, [event.data.object.subscription]);
+    if (rowCount) await track(pool, 'payment_failed', event.data.object.subscription);
+  }
+  if (event.type === 'invoice.paid' && event.data.object.subscription) {
+    const { rowCount } = await pool.query(
+      `UPDATE subscribers SET status = 'active' WHERE stripe_subscription = $1 AND status = 'past_due'`, [event.data.object.subscription]);
+    if (rowCount) await track(pool, 'payment_recovered', event.data.object.subscription);
+  }
   if (event.type === 'customer.subscription.deleted') {
     const sub = event.data.object;
     const { rowCount } = await pool.query(
       `UPDATE subscribers SET status = 'cancelled', cancelled_at = now()
-       WHERE stripe_subscription = $1 AND status = 'active'`,
+       WHERE stripe_subscription = $1 AND status IN ('active','past_due')`,
       [sub.id],
     );
     if (rowCount) await track(pool, 'cancelled', sub.id);
   }
 }
+
+export const WEBHOOK_EVENTS = ['checkout.session.completed', 'invoice.paid', 'invoice.payment_failed', 'customer.subscription.deleted'];

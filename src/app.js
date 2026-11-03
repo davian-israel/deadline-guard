@@ -94,11 +94,23 @@ export function createApp({ pool, ch, stripe, baseUrl }) {
     const { rows } = id ? await pool.query('SELECT s.*, c.name FROM subscribers s JOIN companies c ON c.number = s.company_number WHERE s.id = $1', [id]) : { rows: [] };
     const sub = rows[0];
     if (!sub) return html(res, views.messagePage('Link not valid', '<p>This link has expired or is wrong.</p>'), 404);
-    const body = sub.status === 'active'
-      ? `<p>Reminders for <b>${views.esc(sub.name)}</b> go to ${views.esc(sub.email)}.</p>
-         <form method="post" action="/manage/${views.esc(req.params.token)}/cancel"><button>Cancel subscription</button></form>`
+    const t = views.esc(req.params.token);
+    const portal = stripe && sub.stripe_customer
+      ? `<form method="post" action="/manage/${t}/billing" style="margin-bottom:12px"><button class="btn">Update card or see invoices</button></form>` : '';
+    const warn = sub.status === 'past_due' ? '<p><b>Your last payment did not go through.</b> Update your card to keep your reminders.</p>' : '';
+    const body = ['active', 'past_due'].includes(sub.status)
+      ? `${warn}<p>Reminders for <b>${views.esc(sub.name)}</b> go to ${views.esc(sub.email)}.</p>${portal}
+         <form method="post" action="/manage/${t}/cancel"><button class="btn">Cancel subscription</button></form>`
       : `<p>Reminders for <b>${views.esc(sub.name)}</b> are ${views.esc(sub.status)}.</p>`;
     html(res, views.messagePage('Manage reminders', body));
+  }));
+
+  app.post('/manage/:token/billing', wrap(async (req, res) => {
+    const id = verifyToken(req.params.token);
+    const { rows } = id ? await pool.query('SELECT stripe_customer FROM subscribers WHERE id = $1', [id]) : { rows: [] };
+    if (!stripe || !rows[0]?.stripe_customer) return res.redirect(303, `/manage/${encodeURIComponent(req.params.token)}`);
+    const portal = await stripe.billingPortal.sessions.create({ customer: rows[0].stripe_customer, return_url: `${baseUrl}/manage/${encodeURIComponent(req.params.token)}` });
+    res.redirect(303, portal.url);
   }));
 
   app.post('/manage/:token/cancel', wrap(async (req, res) => {

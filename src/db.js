@@ -83,6 +83,8 @@ export async function metrics(pool, priceGbp) {
     venture: 'deadline-guard',
     paid_active: paid,
     mrr_gbp: Number((paid * priceGbp).toFixed(2)),
+    past_due: await q(`SELECT count(*) n FROM subscribers WHERE status = 'past_due'`),
+    waitlist: await q(`SELECT count(*) n FROM subscribers WHERE status = 'pending'`),
     new_paid_7d: await q(`SELECT count(*) n FROM events WHERE type = 'paid' AND ${since}`),
     cancelled_7d: await q(`SELECT count(*) n FROM events WHERE type = 'cancelled' AND ${since}`),
     checkouts_started_7d: await q(`SELECT count(*) n FROM events WHERE type = 'checkout_started' AND ${since}`),
